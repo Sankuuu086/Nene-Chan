@@ -5,26 +5,40 @@ from psycopg2.extras import DictCursor
 
 DATABASE_URL = os.environ.get("DATABASE_URL") or "postgresql://neondb_owner:npg_xtaY3l6GjwSV@ep-royal-river-apeji572.c-7.us-east-1.aws.neon.tech/neondb?sslmode=require"
 
-if not DATABASE_URL:
-    print("WARNING: DATABASE_URL not set! Database functions will fail unless set.")
-    db_pool = None
-else:
-    # Initialize a connection pool (min 1, max 10 connections)
-    db_pool = psycopg2.pool.SimpleConnectionPool(1, 10, DATABASE_URL)
+db_pool = None
+
+def get_pool():
+    global db_pool
+    if not DATABASE_URL:
+        print("WARNING: DATABASE_URL not set! Database functions will fail unless set.")
+        return None
+    if db_pool is None:
+        try:
+            db_pool = psycopg2.pool.SimpleConnectionPool(1, 10, DATABASE_URL)
+        except Exception as e:
+            print(f"ERROR: Failed to connect to database: {e}")
+            raise
+    return db_pool
 
 class DBConnection:
     def __enter__(self):
-        if not db_pool:
+        pool = get_pool()
+        if not pool:
             raise Exception("Database is not configured. Please set DATABASE_URL.")
-        self.conn = db_pool.getconn()
+        self.conn = pool.getconn()
         return self.conn
     
     def __exit__(self, exc_type, exc_val, exc_tb):
         if hasattr(self, 'conn') and self.conn:
-            db_pool.putconn(self.conn)
+            get_pool().putconn(self.conn)
 
 def init_db():
-    if not db_pool: return
+    try:
+        pool = get_pool()
+        if not pool: return
+    except Exception:
+        return
+    
     with DBConnection() as conn:
         cursor = conn.cursor()
         cursor.execute('''
@@ -204,5 +218,4 @@ def get_lifetime_leaderboard():
         })
     return players
 
-if db_pool:
-    init_db()
+init_db()

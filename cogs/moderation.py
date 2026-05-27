@@ -224,6 +224,11 @@ class Moderation(commands.Cog):
             await ctx.send("❌ Member not found. Make sure you @mention them.")
         elif isinstance(error, commands.MissingRequiredArgument):
             await ctx.send(f"❌ Missing argument. Use `!help` to see correct usage.")
+        elif isinstance(error, commands.CommandNotFound):
+            pass # Ignore invalid commands
+        else:
+            await ctx.send(f"⚠️ **An error occurred:** {str(error)}")
+            print(f"Command Error: {error}")
 
 
 def setup(bot):
